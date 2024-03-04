@@ -284,7 +284,154 @@ db.Where("name = ?", "jinzhu").Delete(&email)
 
 ```
 
+## Tutorials
 
+### Context
 
+```go
+//Single Session Mode
+db.WithContext(ctx).Find(&users)
+//Continuous Session Mode
+tx := db.WithContext(ctx)
+tx.First(&user, 1)
+tx.Model(&user).Update("role", "admin")
+//Context Timeout
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
 
+db.WithContext(ctx).Find(&users)
+```
+
+### Method Chaining
+
+### Error Handing
+
+- Basic: The `*gorm.DB` instance contains an `Error` field, which is set when an error occurs.
+
+  ```go
+  if err := db.Where("name = ?", "jinzhu").First(&user).Error; err != nil {
+    // Handle error...
+  }
+  ```
+
+- `ErrRecordNotFound` : GORM returns `ErrRecordNotFound` when no record is found using methods like `First`, `Last`, `Take`.
+
+  ```go
+  err := db.First(&user, 100).Error
+  if errors.Is(err, gorm.ErrRecordNotFound) {
+    // Handle record not found error...
+  }
+  ```
+
+### Session
+
+```go
+// Session Configuration
+type Session struct {
+  DryRun                   bool
+  PrepareStmt              bool
+  NewDB                    bool
+  Initialized              bool
+  SkipHooks                bool
+  SkipDefaultTransaction   bool
+  DisableNestedTransaction bool
+  AllowGlobalUpdate        bool
+  FullSaveAssociations     bool
+  QueryFields              bool
+  Context                  context.Context
+  Logger                   logger.Interface
+  NowFunc                  func() time.Time
+  CreateBatchSize          int
+}
+```
+
+### Hooks
+
+### Transaction
+
+```go
+// begin a transaction
+tx := db.Begin()
+
+// do some database operations in the transaction (use 'tx' from this point, not 'db')
+tx.Create(...)
+
+// ...
+
+// rollback the transaction in case of error
+tx.Rollback()
+
+// Or commit the transaction
+tx.Commit()
+```
+
+### Migration
+
+```go
+db.AutoMigrate(&User{})
+
+db.AutoMigrate(&User{}, &Product{}, &Order{})
+
+// Add table suffix when creating tables
+db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&User{})
+
+db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{
+  DisableForeignKeyConstraintWhenMigrating: true,
+})
+```
+
+### Logger
+
+### Database Interface
+
+### Performance
+
+### Customize Data Types
+
+```go
+type JSON json.RawMessage
+
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (j *JSON) Scan(value interface{}) error {
+  bytes, ok := value.([]byte)
+  if !ok {
+    return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
+  }
+
+  result := json.RawMessage{}
+  err := json.Unmarshal(bytes, &result)
+  *j = JSON(result)
+  return err
+}
+
+// Value return json value, implement driver.Valuer interface
+func (j JSON) Value() (driver.Value, error) {
+  if len(j) == 0 {
+    return nil, nil
+  }
+  return json.RawMessage(j).MarshalJSON()
+}
+```
+
+### Scopes
+
+### Conventions
+
+### Indexes
+
+```go
+type User struct {
+  Name  string `gorm:"index"`
+  Name2 string `gorm:"index:idx_name,unique"`
+  Name3 string `gorm:"index:,sort:desc,collate:utf8,type:btree,length:10,where:name3 != 'jinzhu'"`
+  Name4 string `gorm:"uniqueIndex"`
+  Age   int64  `gorm:"index:,class:FULLTEXT,comment:hello \\, world,where:age > 10"`
+  Age2  int64  `gorm:"index:,expression:ABS(age)"`
+}
+
+// MySQL option
+type User struct {
+  Name string `gorm:"index:,class:FULLTEXT,option:WITH PARSER ngram INVISIBLE"`
+}
+```
 
